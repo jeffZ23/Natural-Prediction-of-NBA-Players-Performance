@@ -55,7 +55,7 @@ Install dependencies
 bash
 Copy
 Edit
-pip install pandas numpy scikit-learn nba_api matplotlib seaborn shiny
+pip install pandas numpy scikit-learn nba_api matplotlib seaborn shiny requests
 pandas: high-performance data structures for tabular data 
 pandas.pydata.org
 pandas.pydata.org
@@ -124,6 +124,56 @@ pred = predict_performance("Kevin Durant", "LAL", True, ["2023"], "Regular Seaso
 print("Above average" if pred == 1 else "Below average")
 Visualize Historical Performance
 Launch the Shiny app, enter a player name and season range, and view game-by-game scoring plots.
+
+Lineup and Availability Monitoring
+----------------------------------
+You can now fold in roster news to understand why a player might underperform (for example, when a star returns from injury and pushes a teammate to the bench) or why others could see a usage bump when starters sit.
+
+### Quick CLI smoke test
+
+1) Install dependencies if you have not already:
+
+```bash
+pip install pandas numpy scikit-learn nba_api matplotlib seaborn shiny requests
+```
+
+2) Pull the current roster signals for a team (e.g., ATL). This prints the depth chart, injury list, and any starter changes/returning players compared with optional snapshots:
+
+```bash
+python LineupMonitor.py --team ATL --save-snapshots
+```
+
+This saves timestamped snapshots to `snapshots/` so you can re-run later with `--prev-depth` and `--prev-injuries` to see what changed.
+
+### Programmatic usage
+
+```python
+from LineupMonitor import (
+    get_team_depth_chart,
+    get_team_injuries,
+    save_snapshot,
+    summarize_lineup_signals,
+)
+
+# Grab today's baseline for the Hawks.
+depth_chart = get_team_depth_chart("ATL")
+injuries = get_team_injuries("ATL")
+save_snapshot(depth_chart, "snapshots/atl-depth-today.json")
+save_snapshot(injuries, "snapshots/atl-injuries-today.json")
+
+# Run the same code tomorrow and compare to yesterday's snapshots.
+signals = summarize_lineup_signals(
+    "ATL",
+    previous_depth_snapshot="snapshots/atl-depth-today.json",
+    previous_injury_snapshot="snapshots/atl-injuries-today.json",
+)
+
+print("Returning players:\n", signals["returning_players"])  # Previously listed as out, now active
+print("Starter changes:\n", signals["starter_changes"])       # New starters and who they replaced
+print("Sidelined players:\n", signals["sidelined_players"])   # Currently listed as out or questionable
+```
+
+The signals align with the example case of a star returning (e.g., Trae Young reclaiming a starting spot and reducing Nickeil Alexander-Walker’s workload). Snapshots let you capture roster state before and after news breaks so you can generate model features that penalize returning-from-absence performances or boost teammates filling in for injured players.
 
 Contributing
 Fork the repository.
